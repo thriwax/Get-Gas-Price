@@ -1,95 +1,66 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+import { useState, useEffect } from "react";
+import { ethers } from "ethers";
 
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.js</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [gasPrice, setGasPrice] = useState(null);
+  const [previousGasPrice, setPreviousGasPrice] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+  async function fetchGasPrice() {
+    setLoading(true);
+    try {
+      const provider = new ethers.JsonRpcProvider("https://eth.llamarpc.com");
+      const price = await provider.getFeeData();
+      const newGasPrice = parseFloat(ethers.formatUnits(price.gasPrice, "gwei"));
+
+      setPreviousGasPrice(gasPrice);
+      setGasPrice(newGasPrice);
+    } catch (error) {
+      console.error("Error in obtaining gas price:", error);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    fetchGasPrice(); // Загружаем данные сразу после монтирования
+  }, []);
+
+  const priceChange =
+    previousGasPrice !== null && gasPrice !== null
+      ? gasPrice - previousGasPrice
+      : null;
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div className="flex flex-col items-center justify-center px-6 py-4 bg-white rounded-xl shadow-lg border border-gray-300">
+        <h1 className="text-2xl font-bold">Current Gas Price</h1>
+        <p className="text-xl mt-2 ping">
+          {gasPrice !== null ? `${gasPrice.toFixed(6)} Gwei` : "Loading..."}
+        </p>
+        <p
+          className={`mt-2 text-lg ${
+            priceChange === null
+              ? "text-gray-500"
+              : priceChange > 0
+              ? "text-red-500"
+              : "text-green-500"
+          }`}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          {priceChange !== null
+            ? `${priceChange > 0 ? "⬆️" : "⬇️"} ${Math.abs(
+                priceChange
+              ).toFixed(6)} Gwei`
+            : "—"}
+        </p>
+        <button
+          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400"
+          onClick={fetchGasPrice}
+          disabled={loading}
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          {loading ? "Loading..." : "Update"}
+        </button>
+      </div>
     </div>
   );
 }
