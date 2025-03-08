@@ -1,6 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
+import dynamic from "next/dynamic";
+
+const Sketch = dynamic(() => import("react-p5"), { ssr: false });
 
 export default function Home() {
   const [gasPrice, setGasPrice] = useState(null);
@@ -23,7 +26,7 @@ export default function Home() {
   }
 
   useEffect(() => {
-    fetchGasPrice(); // Загружаем данные сразу после монтирования
+    fetchGasPrice();
   }, []);
 
   const priceChange =
@@ -31,17 +34,48 @@ export default function Home() {
       ? gasPrice - previousGasPrice
       : null;
 
+  const setup = (p5, canvasParentRef) => {
+    p5.createCanvas(p5.windowWidth, p5.windowHeight).parent(canvasParentRef);
+    p5.frameRate(30); // Плавная анимация
+  };
+
+  const draw = (p5) => {
+    p5.background(10);
+    p5.noFill();
+    p5.stroke(0, 255, 128, 150);
+    p5.strokeWeight(2);
+
+    const mouseX = p5.mouseX;
+    const mouseY = p5.mouseY;
+
+    for (let x = 0; x < p5.width; x += 40) {
+      for (let y = 0; y < p5.height; y += 40) {
+        const noiseVal = p5.noise(x * 0.01, y * 0.01, p5.millis() * 0.0001);
+        p5.push();
+        p5.translate(x, y);
+        p5.rotate(noiseVal * p5.TWO_PI);
+        
+        const distToMouse = p5.dist(x, y, mouseX, mouseY);
+        const warpEffect = p5.map(distToMouse, 0, 300, 10, 40);
+        
+        p5.line(-warpEffect, 0, warpEffect, 0);
+        p5.pop();
+      }
+    }
+  };
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="flex flex-col items-center justify-center px-6 py-4 bg-white rounded-xl shadow-lg border border-gray-300">
+    <div className="relative flex items-center justify-center min-h-screen">
+      <Sketch setup={setup} draw={draw} className="absolute top-0 left-0 w-full h-full" />
+      <div className="absolute flex flex-col items-center justify-center px-6 py-4 bg-black bg-opacity-80 text-white rounded-xl shadow-lg border border-gray-700">
         <h1 className="text-2xl font-bold">Current Gas Price</h1>
-        <p className="text-xl mt-2 ping">
+        <p className="text-xl mt-2">
           {gasPrice !== null ? `${gasPrice.toFixed(6)} Gwei` : "Loading..."}
         </p>
         <p
           className={`mt-2 text-lg ${
             priceChange === null
-              ? "text-gray-500"
+              ? "text-gray-400"
               : priceChange > 0
               ? "text-red-500"
               : "text-green-500"
@@ -60,6 +94,9 @@ export default function Home() {
         >
           {loading ? "Loading..." : "Update"}
         </button>
+        <div className="mt-2 mb-2">
+          <p>by <a className="italic font-bold" href="https://fedor.tech/">Fedor Tatarintsev</a></p>
+        </div>
       </div>
     </div>
   );
