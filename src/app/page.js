@@ -5,6 +5,12 @@ import dynamic from "next/dynamic";
 
 const Sketch = dynamic(() => import("react-p5"), { ssr: false });
 
+const RPC_URLS = [
+  "https://eth.llamarpc.com",
+  "https://cloudflare-eth.com",
+  "https://rpc.ankr.com/eth"
+];
+
 export default function Home() {
   const [gasPrice, setGasPrice] = useState(null);
   const [previousGasPrice, setPreviousGasPrice] = useState(null);
@@ -12,15 +18,26 @@ export default function Home() {
 
   async function fetchGasPrice() {
     setLoading(true);
-    try {
-      const provider = new ethers.JsonRpcProvider("https://eth.llamarpc.com");
-      const price = await provider.getFeeData();
-      const newGasPrice = parseFloat(ethers.formatUnits(price.gasPrice, "gwei"));
+    let success = false;
 
-      setPreviousGasPrice(gasPrice);
-      setGasPrice(newGasPrice);
-    } catch (error) {
-      console.error("Error in obtaining gas price:", error);
+    for (const url of RPC_URLS) {
+      try {
+        const provider = new ethers.JsonRpcProvider(url);
+        const price = await provider.getFeeData();
+        if (!price.gasPrice) throw new Error("Gas price is undefined");
+
+        const newGasPrice = parseFloat(ethers.formatUnits(price.gasPrice, "gwei"));
+        setPreviousGasPrice(gasPrice);
+        setGasPrice(newGasPrice);
+        success = true;
+        break;
+      } catch (error) {
+        console.error(`Error fetching gas price from ${url}:`, error);
+      }
+    }
+
+    if (!success) {
+      alert("Failed to fetch gas price. Try again later.");
     }
     setLoading(false);
   }
@@ -36,7 +53,7 @@ export default function Home() {
 
   const setup = (p5, canvasParentRef) => {
     p5.createCanvas(p5.windowWidth, p5.windowHeight).parent(canvasParentRef);
-    p5.frameRate(30); // Плавная анимация
+    p5.frameRate(30);
   };
 
   const draw = (p5) => {
